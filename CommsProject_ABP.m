@@ -14,7 +14,9 @@ nSym = 1000;    % The number of symbols per packet
 SNR_Vec = 0:2:16;
 lenSNR = length(SNR_Vec);
 
-M = 2;   % The M-ary number, 2 corresponds to binary modulation.
+M = 2;  
+
+% The M-ary number, 2 corresponds to binary modulation.
 % NOTE: M doesn't currenlty work for size 8 (and 32, and onwards,) due to
 % the bits size being a multiple of M and then us deviding by a multiple of
 % log2(M) when converting from bits to message (in the M=8 case, the bits
@@ -24,9 +26,9 @@ M = 2;   % The M-ary number, 2 corresponds to binary modulation.
 
 modulation = 2; % choose between PAM, QAM, and PSK (1,2,3 respectively)
 
-%chan = 1;          % No channel
+chan = 1;          % No channel
 %chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
-chan = [0.227 0.460 0.688 0.460 0.227]';   % Not so invertible, severe ISI
+%chan = [0.227 0.460 0.688 0.460 0.227]';   % Not so invertible, severe ISI
 
 
 % Time-varying Rayleigh multipath channel, try it if you dare. Or take
@@ -79,7 +81,7 @@ for i = 1:numIter
         
         % Convert from EbNo to SNR.
         % Note: Because No = 2*noiseVariance^2, we must add ~3 dB to get SNR (because 10*log10(2) ~= 3).
-        noise_addition = round(10*log10(2*log2(M)));
+        noise_addition = round(10*log10(log2(M)));
         %txNoisy = awgn(txChan, noise_addition+SNR_Vec(j), 'measured'); % Add AWGN
         txNoisy = txChan;
         
