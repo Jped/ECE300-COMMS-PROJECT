@@ -52,7 +52,7 @@ stepsize = 0.01;
 forgetfactor = 0.3; %between 0 and 1
 
 % Number of Weights in Adaptive Filter
-NWeights = length(chan) + 5;
+NWeights = 2* length(chan) + 3;
 NWEIGHTS_Feedback = 2;
 % Adaptive Algorithm
 AdapAlgo = lms(stepsize);
