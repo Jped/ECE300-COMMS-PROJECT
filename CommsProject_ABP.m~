@@ -191,11 +191,6 @@ function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSear
     % Performs a grid search across the specified parameters, returning
     % the optimal values find.
     
-    M = 2;
-    nSym=10000;
-    modulation = 2;
-    chan = [1 .2 .4];
-    
     NWEIGHTS_Feedback = 5;
     optimal_adaptive_algo = -1;
     optimal_n_weight = -1;
@@ -223,6 +218,7 @@ function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSear
                 end
 
                 % message to transmit
+
                 bits = randi(2,[nSym*log2(M), 1])-1;
                 msg = bits2msg(bits, M);
 
@@ -251,7 +247,7 @@ function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSear
                 % Convert from EbNo to SNR.
                 % we are specifically intersted in the SNR value of 12dB.
                 noise_addition = round(10*log10(log2(M)));
-                txNoisy = awgn(txChan, noise_addition+12, 'measured'); % Add AWGN     
+                txNoisy = awgn(txChan, noise_addition+SNR_Vec(12), 'measured'); % Add AWGN     
 
                 yd = equalize(eqobj,txNoisy,trainseq);
 
@@ -271,12 +267,12 @@ function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSear
                 % We're interested in the BER, which is the 2nd output of BITERR
                 [~, ber] = biterr(bits(cur_train_val:end), rxMSGE(cur_train_val:end)); 
                 
-                if ber ~= 0 && ber < best_score
+                if ber < best_score
                     best_score = ber;
                     optimal_train_len = cur_train_val;
                     optimal_adaptive_algo = cur_adaptive_algo;
                     optimal_n_weight = cur_n_weight;
-                    fprintf('New best ber achieved: %e.\n', ber);
+                    fprintf('New best ber achieved: %f.\n', ber);
                 end
             end
         end
