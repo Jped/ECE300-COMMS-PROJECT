@@ -14,7 +14,7 @@ clear all;close all;clc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% HYPERPARAMETERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numIter = 1;  % The number of iterations of the simulation
+numIter = 10;  % The number of iterations of the simulation
 nSym = 20000;    % The number of symbols per packet
 SNR_Vec = 0:2:16;
 lenSNR = length(SNR_Vec);
@@ -44,7 +44,7 @@ chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 % chan.StoreHistory = 1; % Uncomment if you want to be able to do plot(chan)
 
 % Choose number of training symbols (max=len(msg)=1000)
-numTrain = 200;
+numTrain = 175;
 
 % Adaptive Algorithm
 %  - 0 = varlms
@@ -55,16 +55,16 @@ adaptive_algo = 2;
 % Equalizer
 %  - 0 = lineareq
 %  - 1 = dfe
-equalize_val = 1;
+equalize_val = 0;
 
 % equalizer hyperparameters
-NWeights = 2* length(chan);
+NWeights = 6;
 NWEIGHTS_Feedback = 5;
 
 %numRefTap = 2;
 
-stepsize = 0.01;
-forgetfactor = 0.99; % between 0 and 1
+stepsize = 0.005;
+forgetfactor = 1; % between 0 and 1
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%% CREATING EQUALIZER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -91,6 +91,7 @@ end
 
 % Create a vector to store the BER computed during each iteration
 berVec = zeros(numIter, lenSNR);
+berVecE = zeros(numIter, lenSNR);
 
 for i = 1:numIter
     
@@ -124,7 +125,7 @@ for i = 1:numIter
         
         % Convert from EbNo to SNR.
         % Note: Because No = 2*noiseVariance^2, we must add ~3 dB to get SNR (because 10*log10(2) ~= 3).
-        noise_addition = round(10*log10(log2(M)));
+        noise_addition = round(10*log10(2*log2(M)));
         txNoisy = awgn(txChan, noise_addition+SNR_Vec(j), 'measured'); % Add AWGN     
         
         yd = equalize(eqobj,txNoisy,trainseq);
@@ -181,18 +182,23 @@ grid
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%
-adaptives = 0.01:0.05:1;
-weights = 5:10;
+adaptives = 0.9:0.005:1;
+weights = 5:9;
 trains = 25:25:300;
-[best_adap_val, best_n_weight, best_train_len] = gridSearch(0, 1, adaptives, weights, trains);
+[best_adap_val, best_n_weight, best_train_len] = gridSearch(2, 0, adaptives, weights, trains);
 %%
+
+% for lms and lineareq, best vals were: adap_val=0.005, n_weight=8, best_train_len=75
+% for rls and lineareq, best vals were: adap_val=1, n_weight=6, best_train_len=175
+% for lms and def, best vals were: adap_val=, n_weight=, feed_back_weights =, best_train_len=
+% for rls and def, best vals were: adap_val=, n_weight=, , feed_back_weights =, best_train_len=
 
 function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSearch(adaptive_algo, equalizer, adaptive_algo_contenders, n_weight_contenders, num_train_contenders)
     % Performs a grid search across the specified parameters, returning
     % the optimal values find.
     
     M = 2;
-    nSym=10000;
+    nSym=20000;
     modulation = 2;
     chan = [1 .2 .4];
     
@@ -204,20 +210,20 @@ function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSear
     for cur_adaptive_algo = adaptive_algo_contenders
         for cur_n_weight = n_weight_contenders
             for cur_train_val = num_train_contenders
+                fprintf('Current run: adaptive: %f, weight: %d, train: %d\n', cur_adaptive_algo, cur_n_weight, cur_train_val);
                 
                 % adaptive filter algorithm
                 if isequal(adaptive_algo, 0)
                     AdapAlgo = varlms(cur_adaptive_algo,0.01,0,0.01);
                 elseif isequal(adaptive_algo, 1)
-                    AdapAlgo = lms(adaptive_algo_contender);
+                    AdapAlgo = lms(cur_adaptive_algo);
                 else
-                    AdapAlgo = rls(adaptive_algo_contender);
+                    AdapAlgo = rls(cur_adaptive_algo);
                 end
 
                 % Equalizer Object
                 if isequal(equalizer, 0)
                     eqobj = lineareq(cur_n_weight,AdapAlgo); %comparable to an FIR
-                    eqobj.RefTap = numRefTap;
                 else
                     eqobj = dfe(cur_n_weight,NWEIGHTS_Feedback,AdapAlgo); %comparable to an IIR
                 end
@@ -239,19 +245,11 @@ function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSear
                 trainseq = tx(1:cur_train_val);
 
                 % transmit (convolve) through channel
-                if isequal(chan,1)
-                    txChan = tx;
-                elseif isa(chan,'channel.rayleigh')
-                    reset(chan) % Draw a different channel each iteration
-                    txChan = filter(chan,tx);
-                else
-                    txChan = filter(chan,1,tx);  % Apply the channel.
-                end
+                txChan = filter(chan,1,tx);  % Apply the channel.
 
                 % Convert from EbNo to SNR.
                 % we are specifically intersted in the SNR value of 12dB.
-                noise_addition = round(10*log10(log2(M)));
-                txNoisy = awgn(txChan, noise_addition+12, 'measured'); % Add AWGN     
+                txNoisy = awgn(txChan, 3+12, 'measured'); % Add AWGN     
 
                 yd = equalize(eqobj,txNoisy,trainseq);
 
