@@ -14,8 +14,8 @@ clear all;close all;clc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% HYPERPARAMETERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numIter = 10;  % The number of iterations of the simulation
-nSym = 20000;    % The number of symbols per packet
+numIter = 1000;  % The number of iterations of the simulation
+nSym = 10000;    % The number of symbols per packet
 SNR_Vec = 0:2:16;
 lenSNR = length(SNR_Vec);
 
@@ -126,7 +126,7 @@ for i = 1:numIter
         % Convert from EbNo to SNR.
         % Note: Because No = 2*noiseVariance^2, we must add ~3 dB to get SNR (because 10*log10(2) ~= 3).
         noise_addition = round(10*log10(2*log2(M)));
-        txNoisy = awgn(txChan, noise_addition+SNR_Vec(j), 'measured'); % Add AWGN     
+        txNoisy = awgn(txChan, 3+SNR_Vec(j), 'measured'); % Add AWGN     
         
         yd = equalize(eqobj,txNoisy,trainseq);
         
@@ -173,6 +173,7 @@ end
 hold on
 semilogy(SNR_Vec, berTheory, 'r', 'DisplayName', 'Theoretical BER')
 xlabel('E_b/N_0(dB)');  ylabel('BER');
+title('BER Rates of BPSK')
 legend
 grid
 
