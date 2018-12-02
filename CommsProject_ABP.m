@@ -14,7 +14,7 @@ clear all;close all;clc
 
 
 %%%%%%%%%%%%%%%%%%% HYPERPARAMETERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-numIter = 10;  % The number of iterations of the simulation
+numIter = 1;  % The number of iterations of the simulation
 nSym = 20000;    % The number of symbols per packet
 SNR_Vec = 0:2:16;
 lenSNR = length(SNR_Vec);
@@ -29,7 +29,7 @@ M = 2;
 % We can solve this later on by padding the message as necessary, but for
 % now I think we should just try and get M=4 and 16 working..
 
-modulation = 2; % choose between PAM, QAM, and PSK (1,2,3 respectively)
+modulation = 3; % choose between PAM, QAM, and PSK (1,2,3 respectively)
 
 %chan = 1;          % No channel
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
@@ -60,6 +60,8 @@ AdapAlgo = lms(stepsize);
 
 % Equalizer Object
 eqobj = lineareq(NWeights,AdapAlgo); %comparable to an FIR
+eqobj.RefTap = 4;
+
 %eqobj = dfe(NWeights,NWEIGHTS_Feedback,AdapAlgo); %comparable to an IIR
 
 
@@ -114,14 +116,14 @@ for i = 1:numIter
         
         % de-modulation
         if isequal(modulation, 1)
-            rx = pamdemod(yd, M);  % PAM
+            rx = pamdemod(symbolest, M);  % PAM
      
         elseif isequal(modulation, 2)
-            rx = qamdemod(yd, M);  % QAM
+            rx = qamdemod(symbolest, M);  % QAM
             rx2 = qamdemod(txNoisy,M);
         else
-            rx = pskdemod(yd, M);  % PSK
-            
+            rx = pskdemod(symbolest, M);  % PSK
+            rx2 = pskdemod(txNoisy,M);
         end
         rxMSGE = msg2bits(rx, M);
         rxMSG2 = msg2bits(rx2,M);
