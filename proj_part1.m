@@ -11,11 +11,17 @@
 % channel. We produce two ber graphs, one with 4-ary QAM and the other with
 % 16-ary QAM, showing them aligning with the theoretical BERAWGN curve.
 
+% It took us a considerable amount of time to figure out how to scale our
+% noise. We first believed that the noise addition was a single formula, 
+% yet after observing that our results did not align with the theoretical ber, 
+% we did more research and came with the piecewise equation that can be seen in
+% section 2. In this section, because M>2, we can only look at the relevant
+% part of the piecewise equation.
 
 % Parameters: 
 % We made the number of iterations large so that we could see the ber at 
 % 12 SNR and confirm that it meets the specifications.
-numIter = 100; 
+numIter = 25; 
 n_sym = 10000;    % The number of symbols per packet
 SNR_Vec = 0:2:16;
 len_SNR = length(SNR_Vec);
@@ -76,20 +82,26 @@ end
 %% Section 2: Transmitting over a channel with moderate ISI
 
 % In this section we graph a ber curve for BPSK with moderate ISI.
-% To handle the ISI, we used an adaptive filter and qualizer.
+% To handle the ISI, we used an adaptive filter as an equalizer.
 % After trying several combinations of the parameters for the adaptive
-% filter and equalizer, we decided to write a grid search function to find
+% algorithm and equalizer, we decided to write a grid search function to find
 % the optimal parameters: equalizer weights, training symbol length, and
 % adaptive filter hyperparameters (stepsize for lms and the forget factor
 % for rls).
+
+% Although we tried to include reference taps, we were not able to get it
+% this feature to work (as of yet, at least) and so we have decided to 
+% avoid it altogether. As such we believe that the results still have room  
+% for improvement, and we hope to utilize this margin of possible improvement
+% in part 2 of this project.
 
 % In this section we used the optimal parameters found for an rls adaptive
 % algorithm and a linear equalizer, seeing as they more than satisfy the
 % requirement for 10^-4 ber at 12 SNR. 
 
-% Note that this script is made in the most general sense, so that we could
-% easily alter between our choices for M values, modulation types, and 
-% adaptive algorithms, and equalizer.
+% Note that this script is written in the most general sense, so that we could
+% easily alter our choices for M values, modulation types, adaptive algorithms,
+% and equalizer objects.
 
 
 % Parameters: 
@@ -100,7 +112,7 @@ n_sym = 10000;    % The number of symbols per packet
 SNR_Vec = 0:2:16;
 len_SNR = length(SNR_Vec);
 
-% The M-ary number. 2 corresponds to binary modulation.
+% The M-ary number. Two corresponds to binary modulation.
 M = 2;  
 
 % Modulation type
@@ -145,7 +157,7 @@ stepsize = 0.005;
 forgetfactor = 1; % between 0 and 1
 
 
-% Making the equalizer:
+% Building the equalizer:
 % adaptive filter algorithm
 if isequal(adaptive_algo, 0)
     adaptive_algo = varlms(stepsize,0.01,0,0.01);
@@ -155,7 +167,7 @@ else
     adaptive_algo = rls(forgetfactor);
 end
 
-% equalizer Object
+% equalizer object
 if isequal(equalize_val, 0)
     eqobj = lineareq(n_weights, adaptive_algo); % like FIR
     %eqobj.RefTap = numRefTap;
@@ -247,7 +259,7 @@ if isequal(modulation, 1) || (M<4) % if M<4, qam berawgn is pam berawng
 elseif isequal(modulation, 2)
     berTheory = berawgn(SNR_Vec, 'qam', M); % QAM
 else
-    berTheory = berawgn(SNR_Vec, 'psk', M); % PSK
+    berTheory = berawgn(SNR_Vec, 'psk', M, 'nodiff'); % PSK
 end
 
 hold on
@@ -270,12 +282,12 @@ end
 
 % In this section, we ran grid search several times, each time updating the
 % first 2 parameters of the gridSearch, which correspond to the type of
-% adaptive filter and equalizer the gridSearch fuction will use. The 
-% overall results are commented after the function call.
+% adaptive filter and equalizer object the gridSearch fuction should use. The 
+% overall results can be found after the function call.
 
 % For the sake of time, the grid search function will not run in the
-% published matlab code, but rather was run earlier 4 times, with the
-% results of the 4 times recorded below.
+% published matlab code. Instead, we included the results below from the four
+% iterations that we ran.
 
 adaptive_params = 0:0.005:0.2;
 weights = 5:9;
@@ -290,18 +302,12 @@ trains = 25:25:350;
 % lms and def: adap_val=0.01, n_weight=8,  feedback_weights=5, train_len=25
 % rls and def: adap_val=0.865, n_weight=6, feedback_weights=5, train_len=25
 
-% Overall the best ber achieved was: , yet it is important to keep track of
-% the optimal parameters of each adaptivefilter-equalizer combo, as each
-% needed a different training symbol length, and this metric may prove
-% beneficial when we begin maximizing the bit rate in part 2 of this
-% project.
-
 
 %% Section 4: Helper Functions
 
-% Here are the functions we used in the above parts. These include:
+% Here are the functions we used in the above parts:
 % 1. Grid Search - the function used in our equalizer parameter search.
-% 2. msg2bits and bits2msg - funcs used in our bits-message conversions.
+% 2. msg2bits and bits2msg - functions used in our bits-message conversions.
 
 function [optimal_adaptive_algo, optimal_n_weight, ...
      optimal_feedback_weight, optimal_train_len] = ...
