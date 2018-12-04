@@ -83,35 +83,36 @@ for i = 1:numIter
     msg_RS = rsenc(msg_gf,n,X);
     msg_RS_x = msg_RS.x;
     msg_RS_x = double(msg_RS_x(:));
+    % modulation
+    if isequal(modulation, 1)
+        tx = pammod(msg, M);  % PAM modulation
+    elseif isequal(modulation, 2)
+        tx = qammod(msg_RS_x, M);% QAM modulation
+        tx2 = qammod(msg(:),M);
+    else
+        tx = pskmod(msg_RS_x, M);  % PSK modulation
+        tx2 = pskmod(msg(:),M);
+    end
+    trainseq = tx(1:numTrain);
+    trainseq2= tx2(1:numTrain);
+    % transmit (convolve) through channel
+    if isequal(chan,1)
+        txChan = tx;
+        txChan2 = tx2;
+    elseif isa(chan,'channel.rayleigh')
+        reset(chan) % Draw a different channel each iteration
+        txChan = filter(chan,tx);
+    else
+         txChan = filter(chan,1,tx);  % Apply the channel.
+         txChan2 = filter(chan,1,tx2);
+    end
+
+    % Convert from EbNo to SNR.
+    % Note: Because No = 2*noiseVariance^2, we must add ~3 dB to get SNR (because 10*log10(2) ~= 3).
+    noise_addition = 10*log10(log2(M));
     for j = 1:lenSNR % one iteration of the simulation at each SNR Value
         
-        % modulation
-        if isequal(modulation, 1)
-            tx = pammod(msg, M);  % PAM modulation
-        elseif isequal(modulation, 2)
-            tx = qammod(msg_RS_x, M);% QAM modulation
-            tx2 = qammod(msg(:),M);
-        else
-            tx = pskmod(msg_RS_x, M);  % PSK modulation
-            tx2 = pskmod(msg(:),M);
-        end
-        trainseq = tx(1:numTrain);
-        trainseq2= tx2(1:numTrain);
-        % transmit (convolve) through channel
-        if isequal(chan,1)
-            txChan = tx;
-            txChan2 = tx2;
-        elseif isa(chan,'channel.rayleigh')
-            reset(chan) % Draw a different channel each iteration
-            txChan = filter(chan,tx);
-        else
-             txChan = filter(chan,1,tx);  % Apply the channel.
-             txChan2 = filter(chan,1,tx2);
-        end
-        
-        % Convert from EbNo to SNR.
-        % Note: Because No = 2*noiseVariance^2, we must add ~3 dB to get SNR (because 10*log10(2) ~= 3).
-        noise_addition = 10*log10(log2(M));
+      
         txNoisy = awgn(txChan, noise_addition+SNR_Vec(j), 'measured'); % Add AWGN
         txNoisy2 = awgn(txChan2,noise_addition+SNR_Vec(j), 'measured');
 %         txNoisy = txChan(:);
