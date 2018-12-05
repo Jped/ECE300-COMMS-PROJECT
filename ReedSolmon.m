@@ -3,7 +3,7 @@ close all;
 clc
 
 numIter = 125;  % The number of iterations of the simulation
-nSym = 10002;    % The number of symbols per packet
+nSym = 10003;    % The number of symbols per packet
 SNR_Vec = 12;
 lenSNR = length(SNR_Vec);
 
@@ -18,7 +18,7 @@ modulation = 3;
 %chan = 1;          % No channel
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 %chan = [0.227 0.460 0.688 0.460 0.227]';   % Not so invertible, severe ISI
-numTrain = 3000;
+numTrain = 100;
 
 % Adaptive Algorithm
 %  - 0 = varlms
@@ -35,7 +35,7 @@ equalize_val = 0;
 NWeights = 6;
 NWEIGHTS_Feedback = 5;
 
-numRefTap = 1;
+numRefTap = 3;
 
 stepsize = 0.005;
 forgetfactor = 1; % between 0 and 1
@@ -55,8 +55,9 @@ end
 % Equalizer Object
 if isequal(equalize_val, 0)
     eqobj = lineareq(NWeights,AdapAlgo); %comparable to an FIR
-    %eqobj.RefTap = numRefTap;
-    eqobj.ResetBeforeFiltering = 0;
+    eqobj.RefTap = numRefTap;
+    delay = (numRefTap - 1)/eqobj.nSampPerSym;
+    %eqobj.ResetBeforeFiltering = 0;
 else
     eqobj = dfe(NWeights, NWEIGHTS_Feedback, AdapAlgo); %comparable to an IIR
 end
@@ -76,9 +77,9 @@ berVec2 = zeros(numIter, lenSNR);
 for i = 1:numIter
     
     % message to transmit
-    bits = randi(2,[nSym*log2(M), 1])-1;
+    bits = randi(2,[(nSym + delay)*log2(M), 1])-1;
     msg = bits2msg(bits, M);
-    msg= reshape(msg,[nSym/X,X]);
+    msg= reshape(msg,[(nSym + delay)/X,X]);
     msg_gf = gf(msg,log2(M));
     msg_RS = rsenc(msg_gf,n,X);
     msg_RS_x = msg_RS.x;
@@ -115,13 +116,8 @@ for i = 1:numIter
       
         txNoisy = awgn(txChan, noise_addition+SNR_Vec(j), 'measured'); % Add AWGN
         txNoisy2 = awgn(txChan2,noise_addition+SNR_Vec(j), 'measured');
-%         txNoisy = txChan(:);
-%         txNoisy2 = txChan2(:);
-%         yd = txNoisy;
-%         yd2 = txNoisy2;
-        
-         yd = equalize(eqobj,txNoisy,trainseq);
-         yd2 = equalize(eqobj,txNoisy2,trainseq2);
+        yd = equalize(eqobj,txNoisy,trainseq);
+        yd2 = equalize(eqobj,txNoisy2,trainseq2);
         % de-modulation
         if isequal(modulation, 1)
             rx = pamdemod(yd, M);  % PAM
@@ -141,7 +137,7 @@ for i = 1:numIter
         % Compute and store the BER for this 
         % We're interested in the BER, which is the 2nd output of BITERR
         numTrainBits = numTrain*log2(M);
-        [~, berVecE(i,j)] = biterr(bits(numTrainBits:end), rxMSG_de(numTrainBits:end)); 
+        [~, berVecE(i,j)] = biterr(bits(numTrainBits:end-delay), rxMSG_de(numTrainBits+delay:end)); 
         [~, berVec2(i,j)] = biterr(bits(numTrainBits:end), rxMSG(numTrainBits:end)); 
     end  % End SNR iteration
 end      % End numIter iteration
@@ -164,118 +160,6 @@ else
     berTheory = berawgn(SNR_Vec, 'psk', M, 'nondiff'); % PSK
 end
 
-hold on
-semilogy(SNR_Vec, berTheory, 'r', 'DisplayName', 'Theoretical BER')
-xlabel('E_b/N_0(dB)');  ylabel('BER');
-title('BER Rates of BPSK')
-legend
-grid
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPER FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%
-% adaptives = 0.9:0.005:1;
-% weights = 5:9;
-% trains = 25:25:300;
-% [best_adap_val, best_n_weight, best_train_len] = gridSearch(2, 0, adaptives, weights, trains);
-%%
-
-% for lms and lineareq, best vals were: adap_val=0.005, n_weight=8, best_train_len=75
-% for rls and lineareq, best vals were: adap_val=1, n_weight=6, best_train_len=175
-% for lms and def, best vals were: adap_val=, n_weight=, feed_back_weights =, best_train_len=
-% for rls and def, best vals were: adap_val=, n_weight=, , feed_back_weights =, best_train_len=
-
-function [optimal_adaptive_algo, optimal_n_weight, optimal_train_len] = gridSearch(adaptive_algo, equalizer, adaptive_algo_contenders, n_weight_contenders, num_train_contenders)
-    % Performs a grid search across the specified parameters, returning
-    % the optimal values find.
-    
-    M = 2;
-    nSym=20000;
-    modulation = 2;
-    chan = [1 .2 .4];
-    
-    NWEIGHTS_Feedback = 5;
-    optimal_adaptive_algo = -1;
-    optimal_n_weight = -1;
-    optimal_train_len = -1;
-    best_score = 1;
-    for cur_adaptive_algo = adaptive_algo_contenders
-        for cur_n_weight = n_weight_contenders
-            for cur_train_val = num_train_contenders
-                %fprintf('Current run: adaptive: %f, weight: %d, train: %d\n', cur_adaptive_algo, cur_n_weight, cur_train_val);
-                
-                % adaptive filter algorithm
-                if isequal(adaptive_algo, 0)
-                    AdapAlgo = varlms(cur_adaptive_algo,0.01,0,0.01);
-                elseif isequal(adaptive_algo, 1)
-                    AdapAlgo = lms(cur_adaptive_algo);
-                else
-                    AdapAlgo = rls(cur_adaptive_algo);
-                end
-
-                % Equalizer Object
-                if isequal(equalizer, 0)
-                    eqobj = lineareq(cur_n_weight,AdapAlgo); %comparable to an FIR
-                else
-                    eqobj = dfe(cur_n_weight,NWEIGHTS_Feedback,AdapAlgo); %comparable to an IIR
-                end
-
-                % message to transmit
-                bits = randi(2,[nSym*log2(M), 1])-1;
-                msg = bits2msg(bits, M);
-
-                % modulation
-                if isequal(modulation, 1)
-                    tx = pammod(msg, M);  % PAM modulation
-                elseif isequal(modulation, 2)
-                    tx = qammod(msg, M);  % QAM modulation
-                else
-                    tx = pskmod(msg, M);  % PSK modulation
-                end
-
-                % Sequence of Training Symbols
-                trainseq = tx(1:cur_train_val);
-
-                % transmit (convolve) through channel
-                txChan = filter(chan,1,tx);  % Apply the channel.
-
-                % Convert from EbNo to SNR.
-                % we are specifically intersted in the SNR value of 12dB.
-                txNoisy = awgn(txChan, 3+12, 'measured'); % Add AWGN     
-
-                yd = equalize(eqobj,txNoisy,trainseq);
-
-                % de-modulation
-                if isequal(modulation, 1)
-                    rx = pamdemod(yd, M);  % PAM
-
-                elseif isequal(modulation, 2)
-                    rx = qamdemod(yd, M);  % QAM
-                else
-                    rx = pskdemod(yd, M);  % PSK
-
-                end
-                rxMSGE = msg2bits(rx, M);
-
-                % Compute and store the BER for this iteration
-                % We're interested in the BER, which is the 2nd output of BITERR
-                [~, ber] = biterr(bits(cur_train_val:end), rxMSGE(cur_train_val:end)); 
-                
-                if ber ~= 0 && ber < best_score
-                    best_score = ber;
-                    optimal_train_len = cur_train_val;
-                    optimal_adaptive_algo = cur_adaptive_algo;
-                    optimal_n_weight = cur_n_weight;
-                    fprintf('New best ber achieved: %e.\n', ber);
-                end
-            end
-        end
-    end
-
-end
 
 
 function [msg] = bits2msg(bits, M)
@@ -284,8 +168,7 @@ function [msg] = bits2msg(bits, M)
     % NOTE: M has to be a multiple of 2.
     
     % The length of bits that will be converted into decimal.
-    len = log2(M); 
-    
+    len = log2(M)
     msg = zeros(size(bits,1)/len, 1);
     
     for i = 1:size(bits,1)/len
