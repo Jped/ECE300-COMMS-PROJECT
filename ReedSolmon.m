@@ -2,11 +2,10 @@ clear all;
 close all;
 clc
 
-numIter = 125;  % The number of iterations of the simulation
-nSym = 10003;    % The number of symbols per packet
-SNR_Vec = 12;
+numIter = 10;  % The number of iterations of the simulation
+nSym = 1005;    % The number of symbols per packet
+SNR_Vec =2:2:12;   
 lenSNR = length(SNR_Vec);
-
 M = 8;  
 
 % Modulation
@@ -15,10 +14,10 @@ M = 8;
 %  - 3 = PSK
 modulation = 3;
 
-%chan = 1;          % No channel
+%chan = 1;          % No channel%
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 %chan = [0.227 0.460 0.688 0.460 0.227]';   % Not so invertible, severe ISI
-numTrain = 100;
+numTrain = 300;
 
 % Adaptive Algorithm
 %  - 0 = varlms
@@ -29,15 +28,15 @@ adaptive_algo = 2;
 % Equalizer
 %  - 0 = lineareq
 %  - 1 = dfe
-equalize_val = 0;
+equalize_val = 1;
 
 % equalizer hyperparameters
 NWeights = 6;
-NWEIGHTS_Feedback = 5;
+NWEIGHTS_Feedback = 6;
 
-numRefTap = 3;
+% numRefTap = 3;
 
-stepsize = 0.005;
+stepsize = 0.01;
 forgetfactor = 1; % between 0 and 1
 
 
@@ -55,18 +54,14 @@ end
 % Equalizer Object
 if isequal(equalize_val, 0)
     eqobj = lineareq(NWeights,AdapAlgo); %comparable to an FIR
-    eqobj.RefTap = numRefTap;
-    delay = (numRefTap - 1)/eqobj.nSampPerSym;
-    %eqobj.ResetBeforeFiltering = 0;
 else
     eqobj = dfe(NWeights, NWEIGHTS_Feedback, AdapAlgo); %comparable to an IIR
 end
 
-X = log2(M);
-
+X = 3;
 %CODEWORD LENGTH:
 n = 2^X-1; % default is 15, max allowed is 65,535
-k =5; %default is 5, Example: 5 specifies a Galois array with five elements, 2^m(second value in gf)
+k =3; 
 paritypos='end';
 
 
@@ -76,12 +71,12 @@ berVec2 = zeros(numIter, lenSNR);
 
 for i = 1:numIter
     
-    % message to transmit
-    bits = randi(2,[(nSym + delay)*log2(M), 1])-1;
+    % message to transmi3
+    bits = randi(2,[nSym*log2(M), 1])-1;
     msg = bits2msg(bits, M);
-    msg= reshape(msg,[(nSym + delay)/X,X]);
+    msg= reshape(msg,[(nSym)/k,k]);
     msg_gf = gf(msg,log2(M));
-    msg_RS = rsenc(msg_gf,n,X);
+    msg_RS = rsenc(msg_gf,n,k);
     msg_RS_x = msg_RS.x;
     msg_RS_x = double(msg_RS_x(:));
     % modulation
@@ -91,14 +86,14 @@ for i = 1:numIter
         tx = qammod(msg_RS_x, M);% QAM modulation
         tx2 = qammod(msg(:),M);
     else
-        tx = pskmod(msg_RS_x, M);  % PSK modulation
-        tx2 = pskmod(msg(:),M);
+        tx = pskmod(msg_RS_x, M,[],'gray');  % PSK modulation
+        tx2 = pskmod(msg(:),M, [], 'gray');
     end
     trainseq = tx(1:numTrain);
     trainseq2= tx2(1:numTrain);
     % transmit (convolve) through channel
     if isequal(chan,1)
-        txChan = tx;
+         txChan = tx;
         txChan2 = tx2;
     elseif isa(chan,'channel.rayleigh')
         reset(chan) % Draw a different channel each iteration
@@ -118,6 +113,8 @@ for i = 1:numIter
         txNoisy2 = awgn(txChan2,noise_addition+SNR_Vec(j), 'measured');
         yd = equalize(eqobj,txNoisy,trainseq);
         yd2 = equalize(eqobj,txNoisy2,trainseq2);
+%         yd = txNoisy;
+%         yd2 = txNoisy2;
         % de-modulation
         if isequal(modulation, 1)
             rx = pamdemod(yd, M);  % PAM
@@ -125,19 +122,19 @@ for i = 1:numIter
             rx = qamdemod(yd, M);  % QAM
             rx2 = qamdemod(yd2,M);
         else
-            rx = pskdemod(yd, M);  % PSK
-            rx2 = pskdemod(yd2,M);
+            rx = pskdemod(yd, M,[],'gray');  % PSK
+            rx2 = pskdemod(yd2,M,[],'gray');
         end
-        rx = gf(reshape(rx, [size(rx,1)/n,n]),msg_gf.m, msg_gf.prim_poly);
-        [rx_decode, cnummerr] = rsdec(rx,n,X);
-        rx_decode = rx_decode.x;
-        rx_decode = double(rx_decode(:));
-        rxMSG = msg2bits(rx2, M);
-        rxMSG_de= msg2bits(rx_decode,M);
+         rx = gf(reshape(rx, [size(rx,1)/n,n]),msg_gf.m, msg_gf.prim_poly);
+         [rx_decode, cnummerr] = rsdec(rx,n,k);
+         rx_decode = rx_decode.x;
+         rx_decode = double(rx_decode(:));
+         rxMSG = msg2bits(rx2, M);
+         rxMSG_de= msg2bits(rx_decode,M);
         % Compute and store the BER for this 
         % We're interested in the BER, which is the 2nd output of BITERR
         numTrainBits = numTrain*log2(M);
-        [~, berVecE(i,j)] = biterr(bits(numTrainBits:end-delay), rxMSG_de(numTrainBits+delay:end)); 
+        [~, berVecE(i,j)] = biterr(bits(numTrainBits:end), rxMSG_de(numTrainBits:end)); 
         [~, berVec2(i,j)] = biterr(bits(numTrainBits:end), rxMSG(numTrainBits:end)); 
     end  % End SNR iteration
 end      % End numIter iteration
@@ -147,7 +144,7 @@ end      % End numIter iteration
 berE = mean(berVecE,1); %no coding
 ber2 = mean(berVec2,1);
 figure
-semilogy(SNR_Vec, berE, 'DisplayName', 'Equalize with coding')
+ semilogy(SNR_Vec, berE, 'DisplayName', 'Equalize with coding')
 hold on
 semilogy(SNR_Vec, ber2, 'DisplayName', 'Equalize with out coding')
 % Compute the theoretical BER for this scenario
@@ -168,7 +165,7 @@ function [msg] = bits2msg(bits, M)
     % NOTE: M has to be a multiple of 2.
     
     % The length of bits that will be converted into decimal.
-    len = log2(M)
+    len = log2(M);
     msg = zeros(size(bits,1)/len, 1);
     
     for i = 1:size(bits,1)/len
