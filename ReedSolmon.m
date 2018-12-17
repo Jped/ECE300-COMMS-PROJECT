@@ -160,7 +160,7 @@ end
 hold on
 semilogy(SNR_Vec, berTheory, 'r', 'DisplayName', 'Theoretical BER')
 xlabel('E_b/N_0(dB)');  ylabel('BER');
-title('BER Rates of BPSK')
+title('BER Rates of 8-ary PSK')
 legend
 grid
 
