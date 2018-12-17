@@ -2,9 +2,9 @@ clear all;
 close all;
 clc
 
-numIter = 10;  % The number of iterations of the simulation
+numIter = 2;  % The number of iterations of the simulation
 nSym = 1005;    % The number of symbols per packet
-SNR_Vec =2:2:12;   
+SNR_Vec =0:2:16;   
 lenSNR = length(SNR_Vec);
 M = 8;  
 
@@ -146,7 +146,7 @@ ber2 = mean(berVec2,1);
 figure
  semilogy(SNR_Vec, berE, 'DisplayName', 'Equalize with coding')
 hold on
-semilogy(SNR_Vec, ber2, 'DisplayName', 'Equalize with out coding')
+semilogy(SNR_Vec, ber2, 'DisplayName', 'Equalize without coding')
 % Compute the theoretical BER for this scenario
 % NOTE: there is no theoretical BER when you have a multipath channel
 if isequal(modulation, 1) || (M<4) % if M<4, qam berawgn is anyways pam berawng
@@ -157,6 +157,12 @@ else
     berTheory = berawgn(SNR_Vec, 'psk', M, 'nondiff'); % PSK
 end
 
+hold on
+semilogy(SNR_Vec, berTheory, 'r', 'DisplayName', 'Theoretical BER')
+xlabel('E_b/N_0(dB)');  ylabel('BER');
+title('BER Rates of BPSK')
+legend
+grid
 
 
 function [msg] = bits2msg(bits, M)
