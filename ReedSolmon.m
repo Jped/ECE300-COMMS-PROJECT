@@ -2,7 +2,7 @@ clear all;
 close all;
 clc
 
-numIter = 2;  % The number of iterations of the simulation
+numIter = 20;  % The number of iterations of the simulation
 nSym = 1005;    % The number of symbols per packet
 SNR_Vec =0:2:16;   
 lenSNR = length(SNR_Vec);
@@ -17,9 +17,9 @@ modulation = 3;
 %chan = 1;          % No channel%
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 %chan = [0.227 0.460 0.688 0.460 0.227]';   % Not so invertible, severe ISI
-numTrain = 300;
+numTrain = 350;
 
-% Adaptive Algorithm
+% Adaptive Algorithm300
 %  - 0 = varlms
 %  - 1 = lms
 %  - 2 = rls
@@ -28,10 +28,10 @@ adaptive_algo = 2;
 % Equalizer
 %  - 0 = lineareq
 %  - 1 = dfe
-equalize_val = 1;
+equalize_val = 0;
 
 % equalizer hyperparameters
-NWeights = 6;
+NWeights = 13;
 NWEIGHTS_Feedback = 6;
 
 % numRefTap = 3;
