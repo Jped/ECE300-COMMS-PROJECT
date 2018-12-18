@@ -122,6 +122,8 @@ Section_1_Table = table(Types, BER_Rate)
 % sections showcase a more complete implementation of other encodings.
 
 
+% This try block is just a way to keep the syntax looking nice even though
+% the code inside this block gives an error.
 try
     % Parameters:
     numIter = 10;  % The number of iterations of the simulation
@@ -543,6 +545,10 @@ Section_3_Table = table(Types, BER_Rate)
 % convolutional encoding is the superior error correcting code of the 
 % three. We therefore turned all our attention to it.
 % 
+% Some of the things we tried to do to optimize the bit rate, while still
+% maintaining the threshold BER was to twiddle with the equalizer
+% parameters as well as the length of the training sequence
+%
 % Our results are below, and these are our 'final' results that we would
 % like considered for our project.
 
@@ -574,7 +580,7 @@ chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 % chan.StoreHistory = 1; % Uncomment if you want to do plot(chan)
 
 % Number of training symbols (max=len(msg)=1000)
-numTrain = 250;
+numTrain = 100;
 
 % Adaptive Algorithm
 %  - 0 = varlms
@@ -597,7 +603,7 @@ rate = 1/2;
 n_weights = 6;
 n_weights_feedback = 7;
 sigconst = qammod((0:M-1)',M);
-numRefTap = 1;
+numRefTap = 2;
 stepsize = 0.005;
 forgetfactor = 1; % between 0 and 1
 
@@ -628,16 +634,21 @@ for i = 1:numIter
     for j = 1:length(SNR_Vec)
 
         % Reset the error and bit counters
-        [count_err_total, count_total_bits] = deal(0);
+        count_err_total = 0;
+        count_total_bits = 0;
 
         while count_total_bits < n_sym
 
             % Generate binary data and convert to symbols
             dataIn = randi([0 1], numSymPerFrame*log2(M), 1);
-
+            
+            
             % Convolutionally encode the data
             dataEnc = convenc(dataIn,trellis);
 
+%             dataEnc = bits2msg(dataEnc, M);
+
+            
             % QAM modulate
             tx_signal = qammod(dataEnc, M, 'InputType', 'bit', ...
                                                  'UnitAveragePower',true);  
@@ -655,16 +666,19 @@ for i = 1:numIter
             % Demodulate the noisy signal using hard decision (bit) and
             % soft decision (approximate LLR) approaches.
             noise_var = 10.^(-(SNR_Vec(j) + noise_addition)/10);
-            rx_data_soft = qamdemod(rx_demod_signal, M, 'OutputType', 'approxllr', ...
-                'UnitAveragePower', true, 'NoiseVariance', noise_var);
+            rx_data_soft = qamdemod(rx_demod_signal, M, 'OutputType', ...
+                        'approxllr', 'UnitAveragePower', true, ...
+                        'NoiseVariance', noise_var);
 
+%             rx_data = msg2bits(rx_data_soft, M);        
+            
             % Viterbi algo to decode the demodulated data
             dataSoft = vitdec(rx_data_soft, trellis, tbl, 'cont', 'unquant');
             
             % Calculate the number of bit errors in the frame. Adjust for the
             % decoding delay, which is equal to the traceback depth.
-            num_bit_err_frame = biterr(dataIn(numTrain:end-tbl-delay), ...
-                                dataSoft(numTrain+tbl+delay:end));
+            num_bit_err_frame = biterr(dataIn(numTrain:end-tbl-delay*log2(M)), ...
+                                dataSoft(numTrain+tbl+delay*log2(M):end));
 
             % Increment the error and bit counters
             count_err_total = count_err_total + num_bit_err_frame;
@@ -679,11 +693,11 @@ end        % end of numIter iteration
 
 ber = mean(overall_ber,1);
 
-semilogy(SNR_Vec, ber, '-*')
+semilogy(SNR_Vec, ber, '-*', 'DisplayName', 'Convolution Coding')
 % semilogy(SNR_Vec, overall_ber, '-*')
 hold on
-semilogy(SNR_Vec, berawgn(SNR_Vec,'qam',M))
-legend('Soft','Theoretical','location','best')
+semilogy(SNR_Vec, berawgn(SNR_Vec,'qam',M), 'DisplayName', 'Theoretical')
+legend('location','best')
 grid
 xlabel('Eb/No (dB)')
 ylabel('Bit Error Rate')
