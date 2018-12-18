@@ -13,9 +13,9 @@
 % of the equalizer bugged us (pun intended) and so, as will be seen in the 
 % code to follow, we got the reference taps part of the equalizer working.
 
-% Attached below, for the sake of completness, is our code from part 1
+% Attached below, for the sake of completeness, is our code from part 1
 % updated with reference taps (there isn't so much to see here, the only
-% difference is in the lines 59, 80-82, and 143.
+% difference is in the lines 59, 80-82, and 143).
 %
 % To shorten our code, we only considered 16-ary QAM modulation with an 
 % rsl-dfe equalizer, printing out the BER rate at 12 SNR.
