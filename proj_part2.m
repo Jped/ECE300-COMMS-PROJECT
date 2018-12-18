@@ -572,7 +572,7 @@ n_sym = 1000;    % The number of symbols per packet
 SNR_Vec = 8:2:16;
 
 % The M-ary number. Two corresponds to binary modulation.
-M = 32;  
+M = 128;  
 
 % Modulation type
 %  - 1 = PAM
@@ -606,13 +606,11 @@ adaptive_algo = 2;
 %  - 1 = dfe
 equalize_val = 0;
 
-% Convolutional encoding parameters:
+% Convolutional encoding parameters
 numSymPerFrame = 1000;   % Number of QAM symbols per frame
 trellis = poly2trellis(7,[171 133]);
+r = 5;
 tbl = 32;
-rate = 1;
-
-
 
 % equalizer hyperparameters
 n_weights = 6;
@@ -653,7 +651,7 @@ for i = 1:numIter
         count_total_bits = 0;
 
         while count_total_bits < n_sym*log2(M)
-
+            
             % Generate binary data and convert to symbols
             dataIn = randi([0 1], (numSymPerFrame)*log2(M), 1);
             
@@ -662,14 +660,14 @@ for i = 1:numIter
             
             % QAM modulate
             tx_signal = qammod(dataEnc, M, 'InputType', 'bit', ...
-                                                 'UnitAveragePower',true);  
+                                                 'UnitAveragePower', true);  
             train_seq = tx_signal(1:numTrain);
 
-            %pass through channel
+            % pass through channel
             txChan_rs = filter(chan,1,tx_signal);
 
             % Pass through AWGN channel and equalize
-            noise_addition = 10*log10(log2(M)*rate);
+            noise_addition = 10*log10(log2(M)*r);
             rx_mod_signal = awgn(txChan_rs, SNR_Vec(j) + noise_addition,'measured');
 
             rx_demod_signal = equalize(eqobj, rx_mod_signal, train_seq);
@@ -703,7 +701,6 @@ end        % end of numIter iteration
 ber = mean(overall_ber,1);
 
 semilogy(SNR_Vec, ber, '-*', 'DisplayName', 'Convolution Coding')
-% semilogy(SNR_Vec, overall_ber, '-*')
 hold on
 semilogy(SNR_Vec, berawgn(SNR_Vec,'qam',M), 'DisplayName', 'Theoretical')
 legend('location','best')
@@ -713,8 +710,10 @@ ylabel('Bit Error Rate')
 
 BER = ber(3);
 Symbol_Rate = ((n_sym - numTrain) / 1000);
+
+% the number of usuable bits per symbol sent
 Bit_Rate = log2(M)*((n_sym - numTrain) / 1000);
-Section_3_Table = table(Types, BER_Rate)
+Section_3_Table = table(BER, Symbol_Rate, Bit_Rate)
 
 
 %% Helper Functions
