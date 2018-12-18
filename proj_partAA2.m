@@ -35,7 +35,7 @@ M = 16;
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 
 % Number of training symbols (max=len(msg)=1000)
-num_train = 350;
+numTrain = 350;
 
 % equalizer hyperparameters
 n_weights = 6;
@@ -68,7 +68,7 @@ for i = 1:numIter
     tx = qammod(msg, M);  % QAM modulation
 
     % Sequence of Training Symbols
-    train_seq = tx(1:num_train);
+    train_seq = tx(1:numTrain);
 
     % transmit (convolve) through channel
     txChan_rs = filter(chan,1,tx);  % Apply the channel.
@@ -80,16 +80,16 @@ for i = 1:numIter
     rx_demod_signal = equalize(eqobj,tx_noisy,train_seq);
 
     % de-modulation
-    rx_eq = qamdemod(rx_demod_signal, M);  % QAM
-    rx_no_eq = qamdemod(tx_noisy, M);
+    rx_rs = qamdemod(rx_demod_signal, M);  % QAM
+    rx_no_rs = qamdemod(tx_noisy,M);
 
-    rx_msg_eq = msg2bits(rx_eq, M);
-    rx_msg_no_eq = msg2bits(rx_no_eq, M);
+    rx_msg = msg2bits(rx_rs, M);
+    rx_msg2 = msg2bits(rx_no_rs,M);
 
     % Compute and store the BER for this iteration
     % We're interested in the BER, which is the 2nd output of BITERR
-    [~, berVec_eq(i,1)] = biterr(bits(1+num_train:end-delay*log2(M)), rx_msg_eq(1+num_train+delay*log2(M):end));
-    [~, berVec_no_eq(i,1)] = biterr(bits, rx_msg_no_eq);
+    [~, berVec_eq(i,1)] = biterr(bits(1+numTrain:end-delay*log2(M)), rx_msg(1+numTrain+delay*log2(M):end));
+    [~, berVec_no_eq(i,1)] = biterr(bits,rx_msg2);
 
 end      % End numIter iteration
 
@@ -100,8 +100,7 @@ berTheory = berawgn(SNR_Val, 'qam', M); % QAM
 
 Types = {'Equalized', 'Not Equalized', 'Theoretical'}';
 BER_Rate = [ber_eq, ber_no_eq, berTheory]';
-Section_1_Table = table(Types, BER_Rate);
-disp(Section_1_Table)
+Section_1_Table = table(Types, BER_Rate)
 
 % Note that unlike in part 1 where we got BPSK down to 10^-4, we almost 
 % nearly got 16-ary QAM down to the same requirement.
@@ -144,7 +143,7 @@ try
     chan = [1 .2 .4]; % Somewhat invertible channel impulse response
 
     % number of training symbols
-    num_train = 175;
+    numTrain = 175;
 
     % Adaptive Algorithm
     %  - 0 = varlms
@@ -294,8 +293,8 @@ try
             end
 
             % Sequence of Training Symbols
-            trainseq_bch = tx_bch(1:num_train);
-            trainseq_no_bch = tx_no_bch(1:num_train); %no encoding
+            trainseq_bch = tx_bch(1:numTrain);
+            trainseq_no_bch = tx_no_bch(1:numTrain); %no encoding
 
             % transmit (convolve) through channel
             if isequal(chan,1)
@@ -336,8 +335,8 @@ try
 
             % Compute and store the BER for this iteration
             % We're interested in the BER, which is the 2nd output of BITERR
-            [~, berVec_no_bch(i,j)] = biterr(bits(1+num_train:end-delay*log2(M)), ...
-                        rxMSG_no_bch(1+num_train+delay*log2(M):end)); %no coding
+            [~, berVec_no_bch(i,j)] = biterr(bits(1+numTrain:end-delay*log2(M)), ...
+                        rxMSG_no_bch(1+numTrain+delay*log2(M):end)); %no coding
             [~, berVec_bch(i,j)] = biterr(bits,rxMSG_bch); %with coding
 
         end  % End SNR iteration
@@ -390,7 +389,7 @@ modulation = 3;
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 %chan = [0.227 0.460 0.688 0.460 0.227]';   % Not so invertible, severe ISI
 
-num_train = 350;
+numTrain = 350;
 
 % Adaptive Algorithm300
 %  - 0 = varlms
@@ -434,7 +433,7 @@ n_sym = n_sym-delay; % reed solomon requieres specific number of bits
 % Reed Solomon parameters:
 X = 3;
 j = 2^X-1; % codeword length; default is 15, max allowed is 65,535
-k = 3; 
+k =3; 
 paritypos='end';
 
 % Create a vector to store the BER computed during each iteration
@@ -465,8 +464,8 @@ for i = 1:numIter
         tx_rs = pskmod(msg_RS_x, M,[],'gray');  % PSK modulation
         tx_no_rs = pskmod(msg(:),M, [], 'gray');
     end
-    trainseq_rs = tx_rs(1:num_train);
-    trainseq_no_rs = tx_no_rs(1:num_train);
+    trainseq_rs = tx_rs(1:numTrain);
+    trainseq_no_rs = tx_no_rs(1:numTrain);
     % transmit (convolve) through channel
     if isequal(chan,1)
          txChan_rs = tx_rs;
@@ -484,11 +483,11 @@ for i = 1:numIter
     % Convert from EbNo to SNR.
     % Note: Because No = 2*noiseVariance^2, we must add ~3 dB to get SNR (because 10*log10(2) ~= 3).
     noise_addition = 10*log10(log2(M));
-    for snr = 1:lenSNR % one iteration of the simulation at each SNR Value
+    for j = 1:lenSNR % one iteration of the simulation at each SNR Value
         
       
-        txNoisy_rs = awgn(txChan_rs, noise_addition+SNR_Vec(snr), 'measured'); % Add AWGN
-        txNoisy_no_rs = awgn(txChan_no_rs, noise_addition+SNR_Vec(snr), 'measured');
+        txNoisy_rs = awgn(txChan_rs, noise_addition+SNR_Vec(j), 'measured'); % Add AWGN
+        txNoisy_no_rs = awgn(txChan_no_rs, noise_addition+SNR_Vec(j), 'measured');
         
         yd_rs = equalize(eqobj, txNoisy_rs, trainseq_rs);
         yd_no_rs = equalize(eqobj, txNoisy_no_rs, trainseq_no_rs);
@@ -514,9 +513,9 @@ for i = 1:numIter
         
         % Compute and store the BER for this 
         % We're interested in the BER, which is the 2nd output of BITERR
-        numTrainBits = num_train*log2(M);
-        [~, berVec_rs(i,snr)] = biterr(bits(1+num_train:end-delay*log2(M)), rxMSG_rs(1+num_train+delay*log2(M):end)); 
-        [~, berVec_no_rs(i,snr)] = biterr(bits(1+num_train:end-delay*log2(M)), rxMSG_no_rs(1+num_train+delay*log2(M):end)); 
+        numTrainBits = numTrain*log2(M);
+        [~, berVec_rs(i,j)] = biterr(bits(1+numTrain:end-delay*log2(M)), rxMSG_rs(1+numTrain+delay*log2(M):end)); 
+        [~, berVec_no_rs(i,j)] = biterr(bits(1+numTrain:end-delay*log2(M)), rxMSG_no_rs(1+numTrain+delay*log2(M):end)); 
     end  % End SNR iteration
 end      % End numIter iteration
 
@@ -537,8 +536,7 @@ end
 
 Types = {'With Reed Solomon Encoding', 'No Reed Solomon Encoding', 'Theoretical'}';
 BER_Rate = [ber_rs, ber_no_rs, berTheory]';
-Section_3_Table = table(Types, BER_Rate);
-disp(Section_3_Table)
+Section_3_Table = table(Types, BER_Rate)
 
 
 %% Section 4: Convolutional Encoding
@@ -562,11 +560,6 @@ disp(Section_3_Table)
 % would get - for every extra symbol we would be able to send an extra bit 
 % as compared to 16-ary QAM, which ammounts to 900 extra bits in total.
 %
-% As such even though we are trying to optimize 32-ary, if we had wanted to
-% optimize 16-ary we could have lowered the training sequence length while
-% still keeping the BER below the threshold, therby increasing the bit
-% rate.
-%
 % Our results are below, and these are our 'final' results that we would
 % like considered for our project.
 
@@ -574,7 +567,7 @@ disp(Section_3_Table)
 close all; clear all;
 
 % Parameters: 
-numIter = 1000; 
+numIter = 300; 
 n_sym = 1000;    % The number of symbols per packet
 SNR_Vec = 8:2:16;
 
@@ -601,7 +594,7 @@ chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 % chan.StoreHistory = 1; % Uncomment if you want to do plot(chan)
 
 % Number of training symbols (max=len(msg)=1000)
-num_train = 100;
+numTrain = 100;
 
 % Adaptive Algorithm
 %  - 0 = varlms
@@ -615,16 +608,15 @@ adaptive_algo = 2;
 equalize_val = 0;
 
 % Convolutional encoding parameters
-num_sym_per_frame = 1000;   % same as n_sym
+numSymPerFrame = 1000;   % Number of QAM symbols per frame
 trellis = poly2trellis(7,[171 133]);
-rate = 1/2; % determined by trellis
+rate = 1/2;
 tbl = 32;
 
 % equalizer hyperparameters
 n_weights = 6;
 n_weights_feedback = 7;
-sigconst_M1 = qammod((0:M1-1)',M1);
-sigconst_M2 = qammod((0:M2-1)',M2);
+sigconst = qammod((0:M-1)',M);
 numRefTap = 1;
 stepsize = 0.005;
 forgetfactor = 1; % between 0 and 1
@@ -645,15 +637,9 @@ if isequal(equalize_val, 0)
 else
     eqobj = dfe(n_weights, n_weights_feedback, adaptive_algo); % like IIR
 end
-eqobj_M1 = eqobj;
-eqobj_M2 = eqobj;
-
-eqobj_M1.SigConst = sigconst_M1'; % Set signal constellation.
-eqobj_M2.SigConst = sigconst_M2'; % Set signal constellation.
-eqobj_M1.ResetBeforeFiltering = 0; % Maintain continuity between iterations.
-eqobj_M2.ResetBeforeFiltering = 0; % Maintain continuity between iterations.
-eqobj_M1.RefTap = numRefTap;
-eqobj_M2.RefTap = numRefTap;
+eqobj.SigConst = sigconst'; % Set signal constellation.
+eqobj.ResetBeforeFiltering = 0; % Maintain continuity between iterations.
+eqobj.RefTap = numRefTap;
 delay = (numRefTap-1)/eqobj.nSampPerSym;
 
 ber_vec_32 = zeros(numIter, length(SNR_Vec));
@@ -662,21 +648,21 @@ for i = 1:numIter
     for j = 1:length(SNR_Vec)
             
         % Generate binary data and convert to symbols
-        bits_16 = randi([0 1], (num_sym_per_frame)*log2(M1), 1);
-        bits_32 = randi([0 1], (num_sym_per_frame)*log2(M2), 1);
+        bits_16 = randi([0 1], (numSymPerFrame)*log2(M1), 1);
+        bits_32 = randi([0 1], (numSymPerFrame)*log2(M2), 1);
 
         % Convolutionally encode the data
         data_enc_16 = convenc(bits_16, trellis);
         data_enc_32 = convenc(bits_32, trellis);
 
         % QAM modulate
-        tx_signal_16 = qammod(data_enc_16, M1, 'InputType', 'bit', ...
+        tx_signal_16 = qammod(data_enc_16, M, 'InputType', 'bit', ...
                                                 'UnitAveragePower', true);  
-        tx_signal_32 = qammod(data_enc_32, M2, 'InputType', 'bit', ...
+        tx_signal_32 = qammod(data_enc_132, M, 'InputType', 'bit', ...
                                                 'UnitAveragePower', true);  
 
-        train_seq_16 = tx_signal_16(1:num_train);
-        train_seq_32 = tx_signal_32(1:num_train);
+        train_seq_16 = tx_signal_16(1:numTrain);
+        train_seq_32 = tx_signal_32(1:numTrain);
 
         % pass through channel
         txChan_16 = filter(chan,1,tx_signal_16);
@@ -684,26 +670,22 @@ for i = 1:numIter
 
 
         % Pass through AWGN channel and equalize
-        noise_addition_M1 = 10*log10(log2(M1)*rate);
-        noise_addition_M2 = 10*log10(log2(M2)*rate);
-        
-        rx_mod_signal_16 = awgn(txChan_16, SNR_Vec(j) + noise_addition_M1, 'measured');
-        rx_mod_signal_32 = awgn(txChan_32, SNR_Vec(j) + noise_addition_M2, 'measured');
+        noise_addition = 10*log10(log2(M)*rate);
+        rx_mod_signal_16 = awgn(txChan_16, SNR_Vec(j) + noise_addition,'measured');
+        rx_mod_signal_32 = awgn(txChan_32, SNR_Vec(j) + noise_addition,'measured');
 
-        rx_demod_signal_16 = equalize(eqobj_M1, rx_mod_signal_16, train_seq_16);
-        rx_demod_signal_32 = equalize(eqobj_M2, rx_mod_signal_32, train_seq_32);
+        rx_demod_signal_16 = equalize(eqobj, rx_mod_signal_16, train_seq_16);
+        rx_demod_signal_32 = equalize(eqobj, rx_mod_signal_32, train_seq_32);
 
         % Demodulate the noisy signal using hard decision (bit) and
         % soft decision (approximate LLR) approaches.
-        noise_var_M1 = 10.^(-(SNR_Vec(j) + noise_addition_M1)/10);
-        noise_var_M2 = 10.^(-(SNR_Vec(j) + noise_addition_M2)/10);
-
+        noise_var = 10.^(-(SNR_Vec(j) + noise_addition)/10);
         rx_data_soft_16 = qamdemod(rx_demod_signal_16, M1, 'OutputType', ...
                     'approxllr', 'UnitAveragePower', true, ...
-                    'NoiseVariance', noise_var_M1);
+                    'NoiseVariance', noise_var);
         rx_data_soft_32 = qamdemod(rx_demod_signal_32, M2, 'OutputType', ...
                     'approxllr', 'UnitAveragePower', true, ...
-                    'NoiseVariance', noise_var_M2);
+                    'NoiseVariance', noise_var);
                 
         % Viterbi algo to decode the demodulated data
         dataSoft_16 = vitdec(rx_data_soft_16, trellis, tbl, 'cont', 'unquant');
@@ -711,35 +693,32 @@ for i = 1:numIter
 
         % Calculate the number of bit errors in the frame. Adjust for the
         % decoding delay, which is equal to the traceback depth.        
-        [~, ber_vec_16(i,j)] = biterr(bits_16(num_train:end-tbl-delay*log2(M1)), ...
-                            dataSoft_16(num_train+tbl+delay*log2(M1):end));
-        [~, ber_vec_32(i,j)] = biterr(bits_32(num_train:end-tbl-delay*log2(M2)), ...
-                            dataSoft_32(num_train+tbl+delay*log2(M2):end));
+        [~, ber_vec_16(i,j)] = biterr(bits_16(numTrain_16:end-tbl-delay*log2(M1)), ...
+                            dataSoft_16(numTrain_16+tbl+delay*log2(M1):end));
+        [~, ber_vec_32(i,j)] = biterr(bits_32(numTrain_16:end-tbl-delay*log2(M1)), ...
+                            dataSoft_32(numTrain_32+tbl+delay*log2(M):end));
 
     end    % end of SNR iteration
 end        % end of numIter iteration
 
-ber_16 = mean(ber_vec_16, 1);
-ber_32 = mean(ber_vec_32, 1);
+ber_ce = mean(ber_vec,1);
 
 semilogy(SNR_Vec, ber_32, '-*', 'DisplayName', '32-ary')
 hold on
-semilogy(SNR_Vec, ber_16, '-*', 'DisplayName', '16-ary')
+semilogy(SNR_Vec, ber_ce, '-*', 'DisplayName', '16-ary')
+semilogy(SNR_Vec, berawgn(SNR_Vec,'qam',M), 'DisplayName', 'Theoretical')
 legend('location','best')
 grid
 xlabel('Eb/No (dB)')
 ylabel('Bit Error Rate')
-title('BER Rate with Convolutional Coding')
 
-M = [M1; M2];
-BER = [ber_16(3); ber_32(3)];
-Symbol_Rate = [((n_sym - num_train) / 1000); ((n_sym - num_train) / 1000)];
+BER = ber(3);
+Symbol_Rate = ((n_sym - numTrain) / 1000);
 
 % the number of usuable bits per symbol sent
-Bit_Rate = [log2(M1)*((n_sym - num_train) / 1000); ...
-                (log2(M2)*((n_sym - num_train) / 1000))];
-Section_4_Table = table(M, BER, Symbol_Rate, Bit_Rate);
-disp(Section_4_Table)
+Bit_Rate = log2(M)*((n_sym - numTrain) / 1000);
+Section_3_Table = table(BER, Symbol_Rate, Bit_Rate)
+
 
 %% Helper Functions
 
