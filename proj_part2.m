@@ -251,7 +251,7 @@ try
     % Filter/Channel --> Recieve Filter/AWGN --> Demodulation --> BCH Decoder
     % --> Convert back to message
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%% RUNNING SIMULATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%% RUNNING SIMULATION %%%%%%%%%%%%%%%%%%%%%%%%
 
     % Create a vector to store the BER computed during each iteration
     berVec_bch = zeros(numIter, lenSNR);
@@ -554,7 +554,7 @@ Section_3_Table = table(Types, BER_Rate)
 
 close all; clear all;
 % Parameters: 
-numIter = 100; 
+numIter = 150; 
 n_sym = 1000;    % The number of symbols per packet
 SNR_Vec = 8:2:16;
 
@@ -597,13 +597,13 @@ equalize_val = 0;
 numSymPerFrame = 1000;   % Number of QAM symbols per frame
 trellis = poly2trellis(7,[171 133]);
 tbl = 32;
-rate = 1/2;
+rate = 1;
 
 % equalizer hyperparameters
 n_weights = 6;
 n_weights_feedback = 7;
 sigconst = qammod((0:M-1)',M);
-numRefTap = 2;
+numRefTap = 1;
 stepsize = 0.005;
 forgetfactor = 1; % between 0 and 1
 
@@ -640,7 +640,7 @@ for i = 1:numIter
         while count_total_bits < n_sym
 
             % Generate binary data and convert to symbols
-            dataIn = randi([0 1], numSymPerFrame*log2(M), 1);
+            dataIn = randi([0 1], (numSymPerFrame+delay)*log2(M), 1);
             
             
             % Convolutionally encode the data
