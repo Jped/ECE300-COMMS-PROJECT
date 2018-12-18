@@ -544,17 +544,30 @@ Section_3_Table = table(Types, BER_Rate)
 % During our forray into BCH and Reed Solomon it became known to us that
 % convolutional encoding is the superior error correcting code of the 
 % three. We therefore turned all our attention to it.
+%
+% To implement the convolutional encoding, we reworked our skeleton script
+% we have been using up until now. We made it more similar to the MATLAB
+% documentation. 
 % 
 % Some of the things we tried to do to optimize the bit rate, while still
 % maintaining the threshold BER was to twiddle with the equalizer
-% parameters as well as the length of the training sequence
+% parameters as well as the length of the training sequence and the 
+% trellis & rate combination.
+%
+% We met the specs for M = 2, 8, and 16. However we spent the majority of
+% our time was spent trying to get 32-ary to meet the specs. We decided to
+% spend our effort on 32-ary QAM due to the boost in bits our bit rate
+% would get - for every extra symbol we would be able to send an extra bit 
+% as compared to 16-ary QAM, which ammounts to 900 extra bits in total.
 %
 % Our results are below, and these are our 'final' results that we would
 % like considered for our project.
 
+
 close all; clear all;
+
 % Parameters: 
-numIter = 150; 
+numIter = 300; 
 n_sym = 1000;    % The number of symbols per packet
 SNR_Vec = 8:2:16;
 
@@ -599,6 +612,8 @@ trellis = poly2trellis(7,[171 133]);
 tbl = 32;
 rate = 1;
 
+
+
 % equalizer hyperparameters
 n_weights = 6;
 n_weights_feedback = 7;
@@ -637,17 +652,13 @@ for i = 1:numIter
         count_err_total = 0;
         count_total_bits = 0;
 
-        while count_total_bits < n_sym
+        while count_total_bits < n_sym*log2(M)
 
             % Generate binary data and convert to symbols
-            dataIn = randi([0 1], (numSymPerFrame+delay)*log2(M), 1);
-            
+            dataIn = randi([0 1], (numSymPerFrame)*log2(M), 1);
             
             % Convolutionally encode the data
             dataEnc = convenc(dataIn,trellis);
-
-%             dataEnc = bits2msg(dataEnc, M);
-
             
             % QAM modulate
             tx_signal = qammod(dataEnc, M, 'InputType', 'bit', ...
@@ -669,9 +680,7 @@ for i = 1:numIter
             rx_data_soft = qamdemod(rx_demod_signal, M, 'OutputType', ...
                         'approxllr', 'UnitAveragePower', true, ...
                         'NoiseVariance', noise_var);
-
-%             rx_data = msg2bits(rx_data_soft, M);        
-            
+    
             % Viterbi algo to decode the demodulated data
             dataSoft = vitdec(rx_data_soft, trellis, tbl, 'cont', 'unquant');
             
@@ -701,6 +710,11 @@ legend('location','best')
 grid
 xlabel('Eb/No (dB)')
 ylabel('Bit Error Rate')
+
+BER = ber(3);
+Symbol_Rate = ((n_sym - numTrain) / 1000);
+Bit_Rate = log2(M)*((n_sym - numTrain) / 1000);
+Section_3_Table = table(Types, BER_Rate)
 
 
 %% Helper Functions
