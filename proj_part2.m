@@ -35,7 +35,7 @@ M = 16;
 chan = [1 .2 .4]; % Somewhat invertible channel impulse response, Moderate ISI
 
 % Number of training symbols (max=len(msg)=1000)
-num_train = 350;
+num_train = 200;
 
 % equalizer hyperparameters
 n_weights = 6;
@@ -77,7 +77,7 @@ for i = 1:numIter
     noise_addition = 10*log10(log2(M));
     tx_noisy = awgn(txChan_rs, noise_addition+SNR_Val, 'measured');
 
-    rx_demod_signal = equalize(eqobj,tx_noisy,train_seq);
+    rx_demod_signal = equalize(eqobj, tx_noisy, train_seq);
 
     % de-modulation
     rx_eq = qamdemod(rx_demod_signal, M);  % QAM
@@ -125,6 +125,9 @@ disp(Section_1_Table)
 
 % This try block is just a way to keep the syntax looking nice even though
 % the code inside this block gives an error.
+
+close all; clear all;
+
 try
     % Parameters:
     numIter = 10;  % The number of iterations of the simulation
@@ -374,6 +377,8 @@ end
 % encoding.
 
 
+close all; clear all;
+
 numIter = 20;  % The number of iterations of the simulation
 n_sym = 1005;    % The number of symbols per packet
 SNR_Vec = 12;   
@@ -574,9 +579,9 @@ disp(Section_3_Table)
 close all; clear all;
 
 % Parameters: 
-numIter = 1000; 
-n_sym = 1000;    % The number of symbols per packet
-SNR_Vec = 8:2:16;
+numIter = 2000; 
+n_sym = 1000/2;    % The number of symbols per packet
+SNR_Vec = 8:2:14;
 
 % The M-ary number. Two corresponds to binary modulation.
 M1 = 16;  
@@ -615,7 +620,7 @@ adaptive_algo = 2;
 equalize_val = 0;
 
 % Convolutional encoding parameters
-num_sym_per_frame = 1000;   % same as n_sym
+num_sym_per_frame = n_sym;   % same as n_sym
 trellis = poly2trellis(7,[171 133]);
 rate = 1/2; % determined by trellis
 tbl = 32;
@@ -662,8 +667,8 @@ for i = 1:numIter
     for j = 1:length(SNR_Vec)
             
         % Generate binary data and convert to symbols
-        bits_16 = randi([0 1], (num_sym_per_frame)*log2(M1), 1);
-        bits_32 = randi([0 1], (num_sym_per_frame)*log2(M2), 1);
+        bits_16 = randi([0 1], num_sym_per_frame*log2(M1), 1);
+        bits_32 = randi([0 1], num_sym_per_frame*log2(M2), 1);
 
         % Convolutionally encode the data
         data_enc_16 = convenc(bits_16, trellis);
@@ -728,8 +733,9 @@ semilogy(SNR_Vec, ber_16, '-*', 'DisplayName', '16-ary')
 legend('location','best')
 grid
 xlabel('Eb/No (dB)')
-ylabel('Bit Error Rate')
-title('BER Rate with Convolutional Coding')
+ylabel('Bit Error Rate(BER)')
+title('BER with Convolutional Coding')
+axis([8, 14, 1e-7 1])
 
 M = [M1; M2];
 BER = [ber_16(3); ber_32(3)];
